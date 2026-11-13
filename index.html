@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>공부호수 · 주간 공부 플래너</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f1f6fa;color:#18384c;font:16px/1.65 "Malgun Gothic",system-ui,sans-serif}main{width:min(790px,94%);margin:24px auto 48px}header{display:flex;justify-content:space-between;align-items:center;padding:0 4px 16px}header strong{font-size:23px}#balance{font-weight:bold;color:#255671;background:white;border:1px solid #d3e1eb;padding:5px 15px;border-radius:40px}.scene{position:relative;overflow:hidden;height:155px;padding:28px;border-radius:24px;background:linear-gradient(#bfd9e8,#dfebf1 65%,#abcdde 66%,#bfdbe4)}.scene:before,.scene:after{content:"";position:absolute;right:-8%;width:74%;height:85%;bottom:30%;background:#8fb3c6;clip-path:polygon(0 100%,20% 60%,34% 70%,57% 12%,74% 46%,88% 22%,100% 66%,100% 100%)}.scene:after{right:-13%;bottom:22%;background:#709aad;transform:scale(.85)}h1{position:relative;z-index:1;font-size:clamp(25px,5vw,36px);margin:5px 0}.scene small{position:relative;z-index:1;color:#2c5066}nav{display:flex;margin:14px 0;background:#e0ebf2;border-radius:15px;padding:4px}button,input,select{font:inherit}button{border:0;border-radius:14px;padding:9px 17px;background:#245d81;color:white;cursor:pointer;font-weight:650}button:hover{filter:brightness(.94)}nav button{flex:1;background:transparent;color:#415c6c;padding:8px 0}nav [aria-current=page]{background:white;color:#164c70;box-shadow:0 2px 7px #20465a18}article{background:white;padding:clamp(17px,4vw,30px);border-radius:20px;margin:14px 0;border:1px solid #dae5ec}h2{font-size:21px;margin:0 0 14px}p{margin:8px 0 15px}label{display:block;font-size:14px;font-weight:650}input,select{display:block;width:100%;min-width:0;border:1px solid #b4c8d4;background:#fbfdff;border-radius:10px;padding:8px 10px;color:inherit;margin:4px 0 12px}.pair,.line{display:flex;gap:12px;align-items:center}.pair>*{flex:1;min-width:0}.line{justify-content:space-between}.light{background:#e7f1f6;color:#204f6a}.row{padding:11px 0;border-top:1px solid #e1ebf1;overflow-wrap:anywhere}.muted,small{color:#4b6575}.result{background:#edf5fa;padding:16px;border-radius:12px}#warning{background:#fff0cf;padding:12px}img{max-width:100%;max-height:220px;object-fit:contain}summary{cursor:pointer;font-weight:bold}button:focus-visible{outline:3px solid #edaa44}section[hidden],[hidden]{display:none!important}@media(max-width:450px){main{margin-top:12px}.scene{height:125px;padding:16px}.line{gap:4px}.line button{padding:7px 12px}}
+</style>
+</head>
+<body><main>
+<header><strong>◒ 공부호수</strong><span id="balance"></span></header>
+<div class="scene"><small>주간 공부 플래너</small><h1 id="title">공부 계획</h1></div>
+<p id="warning" role="alert" hidden></p>
+<nav aria-label="기능 선택">
+<button data-tab="plan">공부 계획</button><button data-tab="verify">사진 인증</button><button data-tab="reward">코인 지급</button><button data-tab="shop">코인 상점</button>
+</nav>
+<section id="plan"><article><h2>계획 입력</h2>
+<form id="planner" novalidate>
+<div class="pair"><label>공부할 날짜<input type="date" id="date"></label><label>과목<input id="subject" placeholder="예: 수학"></label></div>
+<label>문제집 이름<input id="book" placeholder="예: 수학 익힘"></label>
+<div class="pair"><label>시작 쪽수<input id="start" placeholder="예: 12"></label><label>마지막 쪽수<input id="end" placeholder="예: 15"></label></div>
+<button type="submit" id="addPlan">계획 추가</button><span id="planMsg" role="status"></span></form></article>
+<article><h2>주간 계획</h2><div class="line"><button class="light" id="prev" aria-label="지난주">‹</button><strong id="range"></strong><button class="light" id="next" aria-label="다음 주">›</button></div><div id="plans"></div></article></section>
+<section id="verify" hidden><article><h2>공부 인증하기</h2><label>인증할 계획<select id="choice"></select></label><label>오늘 공부한 내용<input id="statement" placeholder="나는 오늘 수학 과목을 12쪽부터 15쪽까지 했어"></label><small id="example"></small><label>공부한 사진<input id="photo" type="file" accept="image/*"></label><img id="preview" hidden alt="선택한 공부 사진"><p class="muted">과목명, 문제집명, 쪽수 범위를 넣어 자유롭게 적고 사진을 올려 주세요. 계획한 쪽을 모두 포함하면 더 공부한 쪽도 인정돼요.</p><button id="certify">인증하기</button><p id="certMsg" role="status"></p><button class="light" data-go="reward">보상 확인 →</button></article></section>
+<section id="reward" hidden><article><h2>코인 지급</h2><p class="result" id="earned"></p><div id="history"></div><button data-go="shop">상점으로 →</button></article></section>
+<section id="shop" hidden><article><h2>코인 상점</h2><div id="goods"></div><form id="buy"><label>상품 번호<input id="number" placeholder="예: 1"></label><button>구매</button></form><p id="shopMsg" role="status"></p><details id="bag"><summary>소지 상품</summary><div id="items"></div></details><p><button class="light" data-go="plan">공부 계획으로 →</button></p></article></section>
+</main><script>
+"use strict";
+const $ = id => document.getElementById(id);
+const goods = [["로블록스 로벅스 100",7000],["베라 기프티콘 (싱글킹)",9000],["메가커피 쿠폰",7500],["CU 상품권 5,000원",12000]];
+const key = "studyLake.v1";
+const initial = () => ({plans:[], coins:5000, purchases:[], attempts:[]});
+let state = initial();
+let blocked = false;
+function warn(message){$("warning").hidden=false; $("warning").textContent=message;}
+function read(){
+  const raw=localStorage.getItem(key);
+  if(raw===null) return initial();
+  const saved=JSON.parse(raw);
+  if(!Array.isArray(saved.plans)||!Array.isArray(saved.purchases)||!Array.isArray(saved.attempts)||!Number.isSafeInteger(saved.coins)) throw Error("invalid");
+  return saved;
+}
+try{state=read();localStorage.setItem(key,JSON.stringify(state));}
+catch{blocked=true;warn("저장 공간을 사용할 수 없거나 기록을 읽지 못했습니다. 브라우저의 저장 설정을 확인한 뒤 다시 열어 주세요.");}
+// 계획 인증과 적립을 한 번의 저장으로 처리한다.
+function change(fn){
+  if(blocked)return false;
+  try{
+    const draft=read();
+    fn(draft);
+    localStorage.setItem(key,JSON.stringify(draft));
+    state=draft;
+    $("warning").hidden=true;
+    return true;
+  }catch{warn("변경 사항을 저장하지 못했습니다. 브라우저 저장 공간과 설정을 확인해 주세요.");return false;}
+}
+function localDate(d){return [d.getFullYear(),String(d.getMonth()+1).padStart(2,"0"),String(d.getDate()).padStart(2,"0")].join("-");}
+function shifted(d,n){const copy=new Date(d);copy.setDate(copy.getDate()+n);return copy;}
+function monday(d){return shifted(d,-((d.getDay()+6)%7));}
+let week=monday(new Date());
+$("date").value=localDate(new Date());
+const describe=p=>p.subject+" · "+p.book+" ("+p.start+"쪽 ~ "+p.end+"쪽)";
+function row(parent,message){const div=document.createElement("div");div.className="row";div.textContent=message;parent.append(div);return div;}
+function render(){
+  $("balance").textContent=state.coins.toLocaleString("ko-KR")+" 코인";
+  const from=localDate(week), to=localDate(shifted(week,6));
+  $("range").textContent=from+" ~ "+to.slice(5);
+  $("plans").replaceChildren();
+  const sorted=[...state.plans].sort((a,b)=>a.date.localeCompare(b.date));
+  const visible=sorted.filter(p=>p.date>=from&&p.date<=to);
+  if(!visible.length)row($("plans"),"이번 주에 등록한 계획이 없습니다.");
+  for(const p of visible){const item=row($("plans"),p.date.slice(5)+" · "+describe(p)+" · "+(p.done?"인증 완료":"인증 대기"));item.id="plan-"+p.id;}
+  const selected=$("choice").value;
+  $("choice").replaceChildren(...sorted.filter(p=>!p.done).map(p=>new Option(p.date+" · "+describe(p),p.id)));
+  if([...$("choice").options].some(o=>o.value===selected))$("choice").value=selected;
+  if(!$("choice").length)$("choice").add(new Option("인증할 계획이 없습니다.",""));
+  showExample();
+  const complete=state.attempts.filter(a=>a.ok);
+  const total=complete.reduce((sum,a)=>sum+(a.amount??10),0);
+  $("earned").textContent=complete.length?(complete.at(-1).amount??10).toLocaleString("ko-KR")+"코인 지급! · 누적 공부 보상 "+total.toLocaleString("ko-KR")+"코인":"계획을 인증하면 1,000코인을 받습니다.";
+  $("history").replaceChildren();
+  for(const a of complete.slice().reverse()){
+    const p=state.plans.find(p=>p.id===a.plan);
+    row($("history"),p.date+" · "+describe(p)+" · +"+(a.amount??10).toLocaleString("ko-KR")+"코인");
+  }
+  $("items").replaceChildren();
+  if(!state.purchases.length)row($("items"),"아직 산 상품이 없습니다.");
+  for(const p of state.purchases)row($("items"),p.name);
+}
+function go(id){
+  document.querySelectorAll("main section").forEach(s=>s.hidden=s.id!==id);
+  document.querySelectorAll("[data-tab]").forEach(b=>{
+    if(b.dataset.tab===id){b.setAttribute("aria-current","page");$("title").textContent=b.textContent;}
+    else b.removeAttribute("aria-current");
+  });
+  render();
+}
+document.querySelectorAll("[data-tab],[data-go]").forEach(b=>b.onclick=()=>go(b.dataset.tab||b.dataset.go));
+$("prev").onclick=()=>{week=shifted(week,-7);render();};
+$("next").onclick=()=>{week=shifted(week,7);render();};
+function addPlan(e){
+  e.preventDefault();
+  const plan={id:globalThis.crypto?.randomUUID?.() ?? (Date.now().toString(36)+"-"+Math.random().toString(36).slice(2)),done:false};
+  for(const field of ["date","subject","book","start","end"]){
+    plan[field]=$(field).value.trim();
+    if(!plan[field]){$("planMsg").textContent=" 값을 꼭 입력하세요!";$(field).focus();return;}
+  }
+  $("planMsg").textContent="";
+  if(change(s=>s.plans.push(plan))){
+    week=monday(new Date(plan.date+"T12:00:00"));render();
+    for(const id of ["book","start","end"])$(id).value="";
+    $("planMsg").textContent=" 이 기기에 저장됨 · "+describe(plan);
+    $("choice").value=plan.id;showExample();
+    $("plan-"+plan.id)?.scrollIntoView?.({block:"nearest"});
+  }else{
+    $("planMsg").textContent=" 이 기기에 저장하지 못했습니다. 입력 내용은 그대로 남아 있습니다.";
+  }
+}
+$("addPlan").onclick=addPlan;
+$("planner").onsubmit=addPlan;
+let previewUrl="";
+$("photo").onchange=()=>{
+  if(previewUrl)URL.revokeObjectURL(previewUrl);
+  const f=$("photo").files[0];
+  $("preview").hidden=!f;
+  if(f){previewUrl=URL.createObjectURL(f);$("preview").src=previewUrl;}
+  $("certMsg").textContent="";
+};
+function showExample(){
+  const plan=state.plans.find(p=>p.id===$("choice").value);
+  $("statement").placeholder=plan ? plan.subject+" · "+plan.book+" · "+plan.start+"~"+plan.end+"쪽" : "인증할 계획을 선택하세요";
+  $("example").textContent=plan ? "입력 예시　나는 오늘 "+plan.subject+" 과목의 "+plan.book+" "+plan.start+"쪽부터 "+plan.end+"쪽까지 했어." : "";
+}
+$("choice").onchange=showExample;
+function certify(plan){
+  const normalize=value=>value.normalize("NFKC").toLowerCase().trim();
+  const escape=value=>value.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
+  const namePattern=value=>Array.from(normalize(value).replace(/\s/g,""),escape).join("\\s*");
+  const sentence=normalize($("statement").value);
+  const unit="(?:쪽|페이지|page|p\\.?)?";
+  const first=normalize(plan.start), last=normalize(plan.end);
+  const numeric=/^[0-9]+$/.test(first) && /^[0-9]+$/.test(last);
+  const bounds=numeric ? ["([0-9]+)","([0-9]+)"] : [escape(first),escape(last)];
+  const range=new RegExp("(?<![0-9])"+bounds[0]+"\\s*"+unit+
+    "\\s*(?:부터|에서|[~〜–—-])\\s*"+bounds[1]+"(?![0-9])\\s*"+unit,"u");
+  const match=sentence.match(range);
+  if(!match)return false;
+  if(numeric && (BigInt(match[1])>BigInt(first) || BigInt(match[2])<BigInt(last) || BigInt(match[1])>BigInt(match[2])))return false;
+  // 책 제목 안에 포함된 과목명을 별도 과목 입력으로 중복 인정하지 않는다.
+  const names=[plan.book,plan.subject].sort((a,b)=>b.replace(/\s/g,"").length-a.replace(/\s/g,"").length);
+  let remaining=sentence.replace(range," ");
+  for(const name of names){
+    const pattern=new RegExp("(?<![\\p{L}\\p{N}])"+namePattern(name)+
+      "(?=$|[^\\p{L}\\p{N}]|(?:과목|문제집|교재|으로|에서|이랑|하고|은|는|이|가|을|를|의|로|도|랑|책|에)(?:$|[^\\p{L}\\p{N}])|과목|문제집)","u");
+    if(!pattern.test(remaining))return false;
+    remaining=remaining.replace(pattern," ");
+  }
+  return true;
+}
+function reward(message){return message==="인증이 완료됐다"?1000:0;}
+$("certify").onclick=()=>{
+  const id=$("choice").value,f=$("photo").files[0];
+  if(!id||!f){$("certMsg").textContent=!id?"먼저 공부 계획을 등록하세요.":"공부한 사진을 선택하세요.";return;}
+  let message;
+  if(change(s=>{
+    const p=s.plans.find(p=>p.id===id);
+    if(!p||p.done){message="이미 처리된 계획입니다.";return;}
+    const ok=certify(p);
+    s.attempts.push({plan:id,statement:$("statement").value.trim(),filename:f.name,time:new Date().toISOString(),ok,amount:ok?reward("인증이 완료됐다"):0});
+    message=ok?"공부가 인증되었습니다! 1,000코인 지급!":"선택한 계획의 과목명·문제집명·시작 쪽·마지막 쪽을 확인해 주세요.";
+    if(ok){p.done=true;s.coins+=reward("인증이 완료됐다");}
+  })){
+    if(state.plans.find(p=>p.id===id)?.done){$("statement").value="";$("photo").value="";$("photo").onchange();}$("certMsg").textContent=message;render();
+  }
+};
+goods.forEach(([name,price],i)=>row($("goods"),(i+1)+". "+name+" · "+price.toLocaleString("ko-KR")+"코인"));
+$("buy").onsubmit=e=>{
+  e.preventDefault();
+  const value=$("number").value.trim();
+  if(!value){$("shopMsg").textContent="구매를 종료합니다.";go("plan");$("planMsg").textContent=" 구매를 종료합니다.";return;}
+  if(["리스트","list"].includes(value.toLowerCase())){$("bag").open=true;render();$("shopMsg").textContent="내 코인: "+state.coins;return;}
+  if(!/^\p{Decimal_Number}+$/u.test(value)){$("shopMsg").textContent="숫자로 입력해 주세요.";return;}
+  // Python int와 같이 유니코드 십진 숫자를 처리한다.
+  const digits=Array.from(value,ch=>{let code=ch.codePointAt(0),first=code;while(/\p{Decimal_Number}/u.test(String.fromCodePoint(first-1)))first--;return (code-first)%10;}).join("");
+  const product=goods[Number(digits)-1];
+  if(!product){$("shopMsg").textContent="없는 상품 번호입니다.";return;}
+  const [name,price]=product;
+  let result;
+  if(change(s=>{
+    if(s.coins<price){result="코인이 부족합니다.";return;}
+    s.coins-=price;s.purchases.push({name,price,time:new Date().toISOString()});
+    result=name+"을(를) 샀어요! 남은 코인: "+s.coins;
+  })){$("shopMsg").textContent=result;render();}
+};
+window.addEventListener("storage",e=>{if(e.key===key||e.key===null){try{state=read();render();}catch{blocked=true;warn("저장 기록을 읽지 못했습니다.");}}});
+go("plan");
+</script>
+<!-- 추후 교사 드라이브 연결 대상: 계획 ID·날짜·과목·문제집·쪽수, 인증 시도(계획 ID·파일명·시각·결과),
+계획별 지급 상태, 코인 잔액, 구매 내역. 사진 원본을 공유하려면 별도 파일 저장과 계획 ID 연결이 필요하다.
+현재 저장 위치는 localStorage이며 사진 원본은 선택 시 미리보기에만 사용한다. -->
+</body></html>
